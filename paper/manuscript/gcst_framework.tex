@@ -1,0 +1,494 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{enumitem}
+
+\geometry{margin=1.25in}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black
+}
+
+\theoremstyle{plain}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{remark}{Remark}[section]
+
+\newcommand{\E}{\mathcal{E}}
+\newcommand{\G}{\mathcal{G}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Crit}{\mathrm{Crit}}
+\newcommand{\Min}{\mathrm{Min}}
+\newcommand{\Sad}{\mathrm{Sad}}
+\newcommand{\Max}{\mathrm{Max}}
+\newcommand{\gCST}{\mathrm{gCST}}
+\newcommand{\CST}{\mathrm{CST}}
+\newcommand{\Li}{\mathrm{L}_\mathrm{i}}
+\newcommand{\Lc}{\mathrm{L}_\mathrm{c}}
+\newcommand{\Lj}{\mathrm{L}_\mathrm{j}}
+\newcommand{\Lg}{\mathrm{L}_\mathrm{g}}
+\newcommand{\Gv}{\mathrm{Gv}}
+\newcommand{\BVAB}{\mathrm{BVAB1}}
+
+\title{\textbf{Geodesic Community State Types (gCSTs):}\\
+  A Morse-Stratified Framework for Vaginal Microbiome\\
+  Community Classification}
+
+\author{Pawel Gajer \and Jacques Ravel}
+
+\date{\today}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Motivation}
+\label{sec:motivation}
+
+Standard Community State Types (CSTs) have become the lingua franca of vaginal
+microbiome research since their introduction by Ravel et al.\ (2011).  The
+VALENCIA classifier~\cite{france2020} operationalised CSTs as
+\emph{nearest-centroid} assignments: each of 13 reference centroids was
+identified from a training corpus of 13{,}160 taxonomic profiles, and a new
+sample is assigned to whichever centroid is closest under a suitable
+compositional distance.
+
+This approach captures the \emph{attractor structure} of vaginal community
+space well -- it identifies the stable, species-dominated states around which
+the majority of samples cluster.  However, it is silent about the
+\emph{transitional structure}: the well-populated compositional paths that
+connect one CST attractor to another.  Empirically, such paths are not
+artefacts of small samples; they appear consistently across geographically and
+ethnically diverse cohorts.  The four arms most prominently observed are:
+\begin{itemize}[noitemsep]
+  \item $\Li \to \Lc$: transition between \textit{L.\ iners} and
+        \textit{L.\ crispatus} dominance,
+  \item $\Li \to \Lj$: transition toward \textit{L.\ jensenii},
+  \item $\Li \to \Gv$: transition toward \textit{G.\ vaginalis},
+  \item $\Li \to \BVAB$: transition toward \textit{Ca.\ Lachnocurva vaginae}.
+\end{itemize}
+These arms are not adequately described by 0-dimensional centroid assignment:
+samples on an arm receive low similarity scores and are often assigned
+discordantly between VALENCIA and hierarchical clustering.  A principled
+extension of the CST concept to 1-dimensional structures is therefore needed.
+
+The present document develops such an extension -- \emph{Geodesic Community
+State Types} (gCSTs) -- grounded in discrete Morse theory on the taxon graph.
+The framework is explicitly dimensional: CSTs are the 0-dimensional layer,
+gCSTs the 1-dimensional layer, and higher-dimensional generalisations are
+delineated for future work.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The Taxon Graph and the Evenness Field}
+\label{sec:setup}
+
+\subsection{Taxon graph}
+\label{sec:graph}
+
+Let $S = \{s_1, \ldots, s_n\}$ be a set of vaginal microbiome samples, each
+represented as a composition vector $\mathbf{x}_i \in \Delta^{p-1}$ (the
+$(p{-}1)$-dimensional simplex, with $p$ taxa).  We work with
+$L^\infty$-normalised relative abundances throughout, but the framework is
+agnostic to the specific normalisation.
+
+\begin{definition}[Taxon graph]
+  The \emph{taxon graph} $\G = (V, E, w)$ is an intersection $k$-nearest
+  neighbour (ikNN) graph constructed on $S$, where
+  \begin{itemize}[noitemsep]
+    \item $V = S$ (samples as vertices),
+    \item $(s_i, s_j) \in E$ if and only if $s_j$ is among the $k$ nearest
+          neighbours of $s_i$ \emph{and} $s_i$ is among the $k$ nearest
+          neighbours of $s_j$,
+    \item $w_{ij}$ is a decreasing function of the compositional distance
+          between $s_i$ and $s_j$.
+  \end{itemize}
+  The optimal $k$ is selected by minimising the generalised cross-validation
+  (GCV) score of a graph spectral smoother fitted to the preterm birth outcome.
+\end{definition}
+
+\subsection{The evenness scalar field}
+\label{sec:evenness}
+
+\begin{definition}[Evenness field]
+  Let $\E : V \to \R_{\geq 0}$ be a scalar field on the taxon graph defined
+  vertex-wise by a measure of compositional evenness -- concretely, by the
+  Shannon entropy
+  \[
+    \E(s_i) = -\sum_{j=1}^{p} x_{ij} \log x_{ij},
+  \]
+  or by any monotone transform thereof.  High values of $\E$ correspond to
+  compositionally diverse, multi-taxon communities; low values correspond to
+  communities strongly dominated by a single taxon.
+\end{definition}
+
+\begin{remark}[Morse convention]
+  We adopt the convention that gradient flow is driven by $-\nabla \E$, i.e.\
+  \emph{downhill} in evenness.  Under this convention:
+  \begin{itemize}[noitemsep]
+    \item \textbf{local minima} of $\E$ are the \emph{sinks} of the flow --
+          they attract trajectories and correspond to single-species dominated,
+          compositionally pure states;
+    \item \textbf{local maxima} of $\E$ are the \emph{sources} -- they repel
+          trajectories and correspond to highly diverse, no-dominant-taxon
+          communities;
+    \item \textbf{saddle points} are the \emph{bottlenecks} through which flow
+          passes from high-evenness regions toward two distinct minima.
+  \end{itemize}
+  This convention is used consistently throughout the paper.
+\end{remark}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discrete Morse Stratification of Community Space}
+\label{sec:morse}
+
+We work in the setting of discrete Morse theory~\cite{forman2002}, adapted to
+the weighted graph $(\G, \E)$.  The \emph{critical points} of $\E$ on $\G$
+are:
+\begin{align*}
+  \Min(\E) &= \{v \in V : \E(v) < \E(u) \text{ for all neighbours } u \sim v\},\\
+  \Sad(\E) &= \{v \in V : v \text{ has exactly one ascending and one descending
+             direction in } \E\},\\
+  \Max(\E) &= \{v \in V : \E(v) > \E(u) \text{ for all neighbours } u \sim v\}.
+\end{align*}
+
+The \emph{Morse-Smale complex} of $(\G, \E, {-\nabla\E})$ stratifies the
+vertex set $V$ into cells according to the asymptotic behaviour of gradient
+flow trajectories.
+
+\subsection{The dimensional hierarchy}
+\label{sec:hierarchy}
+
+Table~\ref{tab:hierarchy} summarises the correspondence between Morse-theoretic
+objects, community space geometry, and biological interpretation.
+
+\begin{table}[h]
+  \centering
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{clll}
+    \toprule
+    \textbf{Dim.} & \textbf{Critical type} & \textbf{$\E$ value} &
+    \textbf{Biological interpretation} \\
+    \midrule
+    0 & Local minimum of $\E$ & Low  &
+      Single-taxon dominated state; canonical CST core \\
+    1 & Index-1 saddle of $\E$ & Intermediate &
+      Transitional community; gCST arm generator \\
+    2 & Local maximum of $\E$ & High &
+      Diverse, no-dominant-taxon community; CST~IV-like sheet \\
+    \bottomrule
+  \end{tabular}
+  \caption{Dimensional stratification of vaginal community space under the
+    evenness field $\E$ with flow convention $-\nabla\E$.}
+  \label{tab:hierarchy}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The gCST Framework}
+\label{sec:gcst}
+
+\subsection{CST-0: canonical community state types}
+\label{sec:cst0}
+
+\begin{definition}[CST-0 core]
+  A \emph{CST-0 core} is a connected component of the basin of attraction of a
+  local minimum $v^* \in \Min(\E)$ under the flow $-\nabla\E$.  Formally,
+  \[
+    \mathrm{Basin}(v^*) =
+      \{v \in V : \phi_t(v) \to v^* \text{ as } t \to \infty\},
+  \]
+  where $\phi_t$ denotes the gradient flow of $-\E$ on $\G$.
+\end{definition}
+
+Each CST-0 core corresponds to one of the canonical, species-dominated
+community states: $\Lc$ (CST~I), $\Lg$ (CST~II), $\Li$ (CST~III),
+$\mathrm{L_j}$ (CST~V), and the dominant taxa of CST~IV sub-types.
+
+\paragraph{Relationship to VALENCIA.}
+The VALENCIA centroids~\cite{france2020} are empirical summaries of CST-0
+cores: each centroid is the weighted mean composition of samples assigned to
+one CST by hierarchical clustering of the 13{,}160-sample training corpus.
+VALENCIA's nearest-centroid classifier is therefore an approximation to
+CST-0 basin assignment.  The gCST framework takes VALENCIA centroids as
+\emph{valid 0-dimensional anchors} and builds higher-dimensional structure on
+top of them: the graph topology of the 13{,}160-sample taxon graph defines
+the 1-dimensional arms, and VALENCIA centroids serve as the fixed endpoints
+(boundary conditions) of those arms.
+
+\subsection{gCST-1: geodesic transition community state types}
+\label{sec:gcst1}
+
+\begin{definition}[gCST-1 arm]
+  Let $\sigma \in \Sad(\E)$ be an index-1 saddle of the evenness field.
+  The \emph{gCST-1 arm associated with $\sigma$} is the 1-dimensional unstable
+  separatrix of $\sigma$ under the flow $-\nabla\E$:
+  \[
+    \mathrm{Arm}(\sigma) =
+      W^u(\sigma) =
+      \{v \in V : \phi_{-t}(v) \to \sigma \text{ as } t \to \infty\},
+  \]
+  i.e.\ the set of vertices whose \emph{backward} flow under $-\nabla\E$
+  converges to $\sigma$.  The arm is a 1-manifold with two boundary
+  points, each lying in a distinct CST-0 basin.
+\end{definition}
+
+\begin{remark}[Geodesic characterisation]
+  In the discrete graph setting, $\mathrm{Arm}(\sigma)$ is operationalised as
+  the \emph{shortest geodesic path} (with respect to edge weights $w$) between
+  the two CST-0 endpoints linked by the saddle $\sigma$.  Each vertex along
+  this path is a \emph{reference composition} for the gCST-1 arm, playing the
+  role that a VALENCIA centroid plays for a CST-0.  Classification of a new
+  sample to a gCST-1 arm is based on its maximum similarity to any vertex in
+  the arm path:
+  \[
+    \mathrm{sim}(\mathbf{x},\, \mathrm{Arm}(\sigma))
+      = \max_{v \in \mathrm{Arm}(\sigma)} \mathrm{sim}(\mathbf{x}, \mathbf{x}_v).
+  \]
+\end{remark}
+
+\paragraph{Hard and soft classification.}
+Hard gCST-1 assignment maps each sample to
+$\arg\max_\sigma \mathrm{sim}(\mathbf{x}, \mathrm{Arm}(\sigma))$, subject to a
+minimum similarity threshold $\tau$.  Soft (overlapping) assignment instead
+assigns a membership vector
+$\mathbf{m}(\mathbf{x}) \in [0,1]^{|\Sad(\E)|}$ obtained by
+normalising the per-arm similarities.  Soft assignment is the preferred default
+because it reflects the continuous nature of compositional transitions and is
+consistent with the Morse-theoretic picture, in which the separatrix is a
+continuous curve rather than a crisp boundary.
+
+\subsection{gCST-2: community state sheets (future work)}
+\label{sec:gcst2}
+
+\begin{definition}[gCST-2 sheet -- informal]
+  A \emph{gCST-2 sheet} is a 2-dimensional cell in the Morse-Smale complex of
+  $(\G, \E)$ bounded by the 1-dimensional skeleton of gCST-1 arms.  It
+  corresponds to a region of community space in which no single taxon dominates
+  and in which samples are simultaneously drawn toward three or more competing
+  CST-0 minima.  The CST~IV communities -- highly diverse, Lactobacillus-poor
+  states -- are the primary biological candidates for gCST-2 characterisation.
+\end{definition}
+
+The formal development of gCST-2 classifiers, including the triangulation of
+2-dimensional cells and the associated similarity scores, is deferred to future
+work.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The Role of \textit{L.\ iners} as Transition Hub}
+\label{sec:li-hub}
+
+A striking empirical observation motivates a formal conjecture.  The four
+dominant arms identified in the PreSSMat (Zambia) and ZAPPS (Bangladesh)
+cohorts all share $\Li$ as one endpoint:
+\[
+  \Li \leftrightarrow \Lc, \quad
+  \Li \leftrightarrow \Lj, \quad
+  \Li \leftrightarrow \Gv, \quad
+  \Li \leftrightarrow \BVAB.
+\]
+This is not consistent with $\Li$ being merely one of several equivalent CST
+minima: it suggests that the $\Li$ minimum has anomalously high
+\emph{saddle-incidence degree} in the Morse-Smale graph.
+
+\begin{definition}[Saddle-incidence degree]
+  For a local minimum $v^* \in \Min(\E)$, define its \emph{saddle-incidence
+  degree}
+  \[
+    \deg_\Sad(v^*) =
+      \bigl|\{\sigma \in \Sad(\E) :
+        v^* \in \partial\,\mathrm{Arm}(\sigma)\}\bigr|,
+  \]
+  i.e.\ the number of gCST-1 arms that have $v^*$ as one of their two
+  boundary endpoints.
+\end{definition}
+
+\begin{proposition}[Li-hub conjecture -- testable]
+  Let $\G_{13k}$ denote the taxon graph built on the VALENCIA 13{,}160-sample
+  training corpus.  Then
+  \[
+    \deg_\Sad(\Li) > \deg_\Sad(v^*)
+    \quad \text{for all } v^* \in \Min(\E) \setminus \{\Li\}.
+  \]
+\end{proposition}
+
+This conjecture is biologically grounded: \textit{L.\ iners} is the species
+most capable of coexisting transiently with diverse microbial partners.  It
+occupies an intermediate ecological niche -- it is Lactobacillus-dominant
+enough to suppress overt BV, yet metabolically less protective than
+\textit{L.\ crispatus}, and sufficiently tolerant of Gardnerella, Ureaplasma,
+and anaerobic species to form stable co-occurrence states.  High
+saddle-incidence degree is the topological expression of this ecological
+flexibility.
+
+\paragraph{Empirical tests.}
+The conjecture generates three testable predictions:
+\begin{enumerate}[noitemsep]
+  \item \textbf{Saddle degree}: compute $\deg_\Sad(v^*)$ for all minima in
+        $\G_{13k}$; expect $\Li$ to rank first.
+  \item \textbf{Arm occupancy}: among all samples assigned to gCST-1 arms,
+        expect the fraction lying on $\Li$-linked arms to be highest.
+  \item \textbf{Transition flux} (longitudinal data): in cohorts with
+        repeated sampling, expect the transition rate through $\Li$-linked
+        arms to exceed that through arms not involving $\Li$.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Building gCSTs from the VALENCIA Training Corpus}
+\label{sec:implementation}
+
+\subsection{Overview}
+
+The construction of a reference gCST-1 classifier from the 13{,}160-sample
+VALENCIA corpus proceeds in five stages.
+
+\begin{enumerate}
+  \item \textbf{Graph construction.}  Build the taxon graph $\G_{13k}$ using
+        the ikNN algorithm with GCV-optimal $k$.  Apply geometric pruning to
+        remove long outlier edges.
+
+  \item \textbf{Evenness field.}  Compute $\E(v)$ for every vertex.  Identify
+        $\Min(\E)$, $\Sad(\E)$, and $\Max(\E)$ using the discrete Morse
+        framework.
+
+  \item \textbf{Arm identification.}  For each saddle $\sigma \in \Sad(\E)$,
+        trace the descending separatrices to their two flanking minima.
+        Operationalise $\mathrm{Arm}(\sigma)$ as the geodesic shortest path
+        (edge-weight metric) between those two minima, subject to the
+        constraint that the path passes through $\sigma$ or its immediate
+        neighbourhood.
+
+  \item \textbf{Reference path table.}  Collect all arm-path vertices into a
+        reference table analogous to the VALENCIA centroid table.  Each row is
+        an observed sample composition; each row is annotated with its arm
+        label (e.g.\ \texttt{arm.li.lc}, \texttt{arm.li.gv}) and its
+        geodesic position along the arm (a scalar in $[0,1]$, where 0 and 1
+        correspond to the two CST-0 endpoints).
+
+  \item \textbf{Classifier.}  Given a new sample $\mathbf{x}$, compute
+        $\mathrm{sim}(\mathbf{x}, \mathrm{Arm}(\sigma))$ for all arms and
+        all CST-0 centroids (VALENCIA or newly derived).  Assign hard or soft
+        labels as described in Section~\ref{sec:gcst1}.
+\end{enumerate}
+
+\subsection{Relationship between VALENCIA centroids and gCST-1 endpoints}
+
+Two complementary formulations are possible and should be evaluated
+empirically:
+
+\begin{description}
+  \item[Formulation A -- Graph-derived endpoints.]  CST-0 cores are defined
+        entirely by the Morse minima of $\E$ on $\G_{13k}$.  VALENCIA
+        centroids serve as a validation reference but not as input.
+
+  \item[Formulation B -- VALENCIA-anchored endpoints.]  The 13 VALENCIA
+        centroids are taken as fixed 0-dimensional anchors.  The gCST-1 arms
+        are then defined as geodesic paths in $\G_{13k}$ whose endpoints are
+        the graph vertices closest to the VALENCIA centroids.  This formulation
+        ensures backward compatibility: any sample previously classifiable by
+        VALENCIA retains its CST-0 label, and gCST-1 labels are assigned only
+        to samples in the saddle regions.
+\end{description}
+
+Formulation~B is recommended for an initial publication because it builds
+incrementally on the established VALENCIA infrastructure and makes the
+extension easy to communicate to the vaginal microbiome community.
+
+\subsection{Coverage of African cohort arms}
+
+The VALENCIA training corpus is predominantly North American (IGS/HMP cohorts).
+The $\Li \to \BVAB$ arm, which is prominent in the Zambia and Bangladesh
+cohorts, may be underrepresented in $\G_{13k}$ because \textit{Ca.\
+Lachnocurva vaginae} is substantially more prevalent in sub-Saharan African
+women.  Two mitigations are recommended:
+
+\begin{enumerate}[noitemsep]
+  \item Verify that the $\Li \to \BVAB$ arm exists in $\G_{13k}$ (possibly
+        as a short or sparse filament) before reporting its gCST-1 properties.
+  \item For transferable arm definitions, construct $\G_{13k+ZB}$ by merging
+        the VALENCIA corpus with the PreSSMat/ZAPPS data, define arm paths
+        on the merged graph, and restrict reference profiles to the 13k
+        vertices for classifier deployment.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Summary of Formal Definitions}
+\label{sec:summary}
+
+For convenience, we collect the core definitions.
+
+\begin{description}
+  \item[Scalar field.] $\E : V(\G) \to \R_{\geq 0}$, evenness (Shannon
+        entropy) of sample composition.  Flow convention: $-\nabla\E$
+        (downhill in evenness).
+
+  \item[CST-0 core.] Basin of attraction of a local minimum
+        $v^* \in \Min(\E)$ under $-\nabla\E$.  Corresponds to a
+        single-taxon-dominated, compositionally pure community state.
+
+  \item[gCST-1 arm.] One-dimensional unstable separatrix
+        $W^u(\sigma)$ of an index-1 saddle $\sigma \in \Sad(\E)$ under
+        $-\nabla\E$.  Operationalised as the geodesic shortest path between the
+        two CST-0 endpoints linked by $\sigma$.  Serves as the 1-dimensional
+        reference object for classification of transitional communities.
+
+  \item[gCST-2 sheet (future).] Two-dimensional cell of the Morse-Smale
+        complex, bounded by the 1-dimensional skeleton.  Corresponds to
+        highly diverse, no-dominant-taxon communities (CST~IV-like states).
+
+  \item[Saddle-incidence degree.] $\deg_\Sad(v^*)$: number of gCST-1 arms
+        incident to a given CST-0 minimum.  The \textit{L.\ iners} minimum is
+        conjectured to have the highest saddle-incidence degree among all
+        CST-0 minima.
+\end{description}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Acknowledgements}
+
+The gCST framework emerged from ongoing analysis of the PreSSMat and ZAPPS
+cohorts as part of the Gates Foundation-funded project on spontaneous preterm
+birth.  We thank Michael T.\ France for the VALENCIA classifier and training
+corpus, which provide the 0-dimensional foundation on which the present
+extension is built.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{thebibliography}{9}
+
+\bibitem{france2020}
+France~MT, Ma~B, Gajer~P, Brown~S, Humphrys~MS, Holm~JB, Waetjen~LE,
+Brotman~RM, Ravel~J.
+VALENCIA: a nearest centroid classification method for vaginal microbial
+communities based on composition.
+\textit{Microbiome} 2020;8:166.
+
+\bibitem{ravel2011}
+Ravel~J, Gajer~P, Abdo~Z, Schneider~GM, Koenig~SSK, McCulle~SL,
+Karlebach~S, Gorle~R, Russell~J, Tacket~CO, Brotman~RM, Davis~CC, Ault~K,
+Peralta~L, Forney~LJ.
+Vaginal microbiome of reproductive-age women.
+\textit{Proc Natl Acad Sci USA} 2011;108(Suppl~1):4680--4687.
+
+\bibitem{gajer2012}
+Gajer~P, Brotman~RM, Bai~G, Sakamoto~J, Schutte~UME, Zhong~X, et al.
+Temporal dynamics of the human vaginal microbiota.
+\textit{Sci Transl Med} 2012;4:132ra52.
+
+\bibitem{forman2002}
+Forman~R.
+A user's guide to discrete Morse theory.
+\textit{Sem Lothar Combin} 2002;48:B48c.
+
+\end{thebibliography}
+
+\end{document}
