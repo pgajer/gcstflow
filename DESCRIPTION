@@ -1,0 +1,35 @@
+Package: gcstflow
+Title: Geodesic Transition CST Classification Framework
+Version: 0.1.0
+Authors@R:
+    person(given = "Pawel",
+           family = "Gajer",
+           email = "pgajer@gmail.com",
+           role = c("aut", "cre"))
+Author: Pawel Gajer [aut, cre]
+Maintainer: Pawel Gajer <pgajer@gmail.com>
+Description: Tools for building, validating, and visualizing geodesic
+    transition Community State Type classifiers (gCSTs) on microbiome taxon
+    graphs. The package provides methods for defining transition corridors
+    between canonical CST cores, computing arm-centric similarity scores,
+    and assigning soft or hard gCST labels with uncertainty diagnostics.
+License: GPL (>= 3)
+URL: https://github.com/pgajer/gcstflow
+BugReports: https://github.com/pgajer/gcstflow/issues
+Encoding: UTF-8
+Language: en-US
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 3.5.0)
+Imports:
+    stats,
+    graphics,
+    grDevices,
+    igraph
+Suggests:
+    testthat (>= 3.0.0),
+    rgl,
+    htmlwidgets,
+    htmltools
+Config/testthat/edition: 3
