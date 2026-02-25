@@ -345,82 +345,152 @@ The conjecture generates three testable predictions:
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Building gCSTs from the VALENCIA Training Corpus}
+\section{Methods: Constructing a gCST-1 Classifier from the VALENCIA Corpus}
 \label{sec:implementation}
 
-\subsection{Overview}
+\subsection{Inputs and notation}
 
-The construction of a reference gCST-1 classifier from the 13{,}160-sample
-VALENCIA corpus proceeds in five stages.
+Let $\G_{13k}=(V,E,w)$ denote the taxon graph built from the 13{,}160-sample
+VALENCIA training corpus.  Let $\E:V\to\R_{\ge 0}$ be the evenness field
+(Section~\ref{sec:evenness}), and let $d(\cdot,\cdot)$ denote the
+sample-to-sample compositional distance used for graph construction.
 
-\begin{enumerate}
-  \item \textbf{Graph construction.}  Build the taxon graph $\G_{13k}$ using
-        the ikNN algorithm with GCV-optimal $k$.  Apply geometric pruning to
-        remove long outlier edges.
+The classifier has two reference object families:
+\begin{itemize}[noitemsep]
+  \item \textbf{CST-0 anchors} (VALENCIA centroids or graph-derived core
+        representatives),
+  \item \textbf{gCST-1 arms} (graph-geodesic transition corridors).
+\end{itemize}
 
-  \item \textbf{Evenness field.}  Compute $\E(v)$ for every vertex.  Identify
-        $\Min(\E)$, $\Sad(\E)$, and $\Max(\E)$ using the discrete Morse
-        framework.
+\subsection{Outcome-agnostic graph construction and $k$ selection}
 
-  \item \textbf{Arm identification.}  For each saddle $\sigma \in \Sad(\E)$,
-        trace the descending separatrices to their two flanking minima.
-        Operationalise $\mathrm{Arm}(\sigma)$ as the geodesic shortest path
-        (edge-weight metric) between those two minima, subject to the
-        constraint that the path passes through $\sigma$ or its immediate
-        neighbourhood.
+To avoid target leakage, graph construction is performed without outcome labels.
+For each $k \in \mathcal{K}$ (e.g.\ $\{3,\ldots,20\}$), build an ikNN graph,
+apply geometric pruning, and compute:
+\begin{align*}
+  C_{\mathrm{conn}}(k) &= 1 - \frac{|V_{\mathrm{LCC}}(k)|}{|V|},\\
+  C_{\mathrm{edit}}(k) &= d_{\mathrm{Jaccard}}(E_k, E_{k+1}),\\
+  C_{\mathrm{long}}(k) &= Q_{0.95}\{\text{edge lengths in }E_k\}.
+\end{align*}
+Choose $k^\ast$ as the smallest $k$ satisfying a connectivity constraint
+($|V_{\mathrm{LCC}}(k)|/|V|\ge 0.99$) and minimising a stability score such as
+\[
+  C_{\mathrm{stab}}(k)=C_{\mathrm{edit}}(k)+\lambda C_{\mathrm{long}}(k).
+\]
+This keeps the representation geometric and general-purpose.
 
-  \item \textbf{Reference path table.}  Collect all arm-path vertices into a
-        reference table analogous to the VALENCIA centroid table.  Each row is
-        an observed sample composition; each row is annotated with its arm
-        label (e.g.\ \texttt{arm.li.lc}, \texttt{arm.li.gv}) and its
-        geodesic position along the arm (a scalar in $[0,1]$, where 0 and 1
-        correspond to the two CST-0 endpoints).
+\subsection{Discrete descent map and critical points}
 
-  \item \textbf{Classifier.}  Given a new sample $\mathbf{x}$, compute
-        $\mathrm{sim}(\mathbf{x}, \mathrm{Arm}(\sigma))$ for all arms and
-        all CST-0 centroids (VALENCIA or newly derived).  Assign hard or soft
-        labels as described in Section~\ref{sec:gcst1}.
+Define a deterministic descent map on vertices:
+\[
+  \Psi(v)=\arg\min_{u\in N(v)\cup\{v\}} \E(u),
+\]
+with ties broken deterministically (e.g.\ by fixed vertex index).
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Minima:} $v\in\Min(\E)$ iff $\Psi(v)=v$.
+  \item \textbf{Endpoint map:} $m(v)=\lim_{t\to\infty}\Psi^{t}(v)\in\Min(\E)$.
+  \item \textbf{Basins:} $B_a=\{v\in V:m(v)=a\}$ for each minimum $a$.
+  \item \textbf{Index-1 saddle candidates:}
+        \[
+          \Sigma_1=\left\{v\notin\Min(\E):
+          \left|\{m(u):u\in N(v)\cup\{v\}\}\right|=2\right\}.
+        \]
+\end{itemize}
+
+Each $\sigma\in\Sigma_1$ is associated with an unordered pair of adjacent
+minima $(a,b)$ and is interpreted as a transition bottleneck between basins
+$B_a$ and $B_b$.
+
+\subsection{Arm extraction as constrained geodesic bundles}
+
+For each saddle $\sigma$ linking minima $(a,b)$:
+\begin{enumerate}[noitemsep]
+  \item Define endpoint anchor sets $A_a\subset B_a$, $A_b\subset B_b$
+        (low-evenness neighbourhoods around each minimum).
+  \item Compute a bundle of $K_{\mathrm{path}}$ shortest simple paths from
+        $A_a$ to $A_b$ constrained to pass through a local neighbourhood of
+        $\sigma$.
+  \item Define a consensus centerline $P_\sigma$ from this bundle
+        (e.g.\ medoid path or edge-frequency backbone).
+  \item Optionally thicken to a corridor
+        \[
+          \mathcal{C}_\sigma=\{v\in V:d_G(v,P_\sigma)\le \delta\},
+        \]
+        where $d_G$ is graph geodesic distance.
 \end{enumerate}
 
-\subsection{Relationship between VALENCIA centroids and gCST-1 endpoints}
+Each vertex in $P_\sigma$ (or $\mathcal{C}_\sigma$) is assigned an arc-length
+coordinate $t\in[0,1]$ from endpoint $a$ to endpoint $b$, yielding an
+interpretable transition axis.
 
-Two complementary formulations are possible and should be evaluated
-empirically:
+\subsection{Reference tables}
+
+Construct:
+\begin{itemize}[noitemsep]
+  \item \textbf{Core table} $\mathcal{T}_0$: CST-0 anchors (13 VALENCIA
+        centroids and/or graph-derived core representatives),
+  \item \textbf{Arm table} $\mathcal{T}_1$: arm/corridor reference vertices
+        with columns \texttt{arm\_id}, \texttt{endpoint\_a},
+        \texttt{endpoint\_b}, \texttt{t}.
+\end{itemize}
+
+\subsection{Classifier: soft and hard assignment}
+
+For sample $\mathbf{x}$ define:
+\begin{align*}
+  d^{(0)}_c(\mathbf{x}) &= d(\mathbf{x},\mu_c), \qquad c\in\mathcal{T}_0,\\
+  d^{(1)}_\sigma(\mathbf{x}) &= \min_{v\in\mathcal{C}_\sigma}
+    d(\mathbf{x},\mathbf{x}_v), \qquad \sigma\in\mathcal{T}_1.
+\end{align*}
+Convert distances to affinities:
+\[
+  s_j(\mathbf{x})=\exp\!\left(-d_j(\mathbf{x})/\tau\right),
+\]
+where $j$ runs over all CST-0 and gCST-1 labels.  Soft memberships are
+\[
+  p_j(\mathbf{x})=\frac{s_j(\mathbf{x})}{\sum_\ell s_\ell(\mathbf{x})}.
+\]
+Hard assignment uses:
+\[
+  \hat{j}(\mathbf{x})=\arg\max_j p_j(\mathbf{x}),
+\]
+with confidence guards such as
+\[
+  \max_j p_j(\mathbf{x})\ge p_{\min}, \quad
+  p_{(1)}(\mathbf{x})-p_{(2)}(\mathbf{x})\ge \Delta_{\min}.
+\]
+Samples failing these guards are labelled \emph{mixed/uncertain}.
+
+\subsection{VALENCIA compatibility modes}
 
 \begin{description}
-  \item[Formulation A -- Graph-derived endpoints.]  CST-0 cores are defined
-        entirely by the Morse minima of $\E$ on $\G_{13k}$.  VALENCIA
-        centroids serve as a validation reference but not as input.
-
-  \item[Formulation B -- VALENCIA-anchored endpoints.]  The 13 VALENCIA
-        centroids are taken as fixed 0-dimensional anchors.  The gCST-1 arms
-        are then defined as geodesic paths in $\G_{13k}$ whose endpoints are
-        the graph vertices closest to the VALENCIA centroids.  This formulation
-        ensures backward compatibility: any sample previously classifiable by
-        VALENCIA retains its CST-0 label, and gCST-1 labels are assigned only
-        to samples in the saddle regions.
+  \item[Mode A: graph-native.] Both CST-0 and gCST-1 references are derived
+        directly from $(\G_{13k},\E)$.
+  \item[Mode B: VALENCIA-anchored.] The 13 VALENCIA centroids define CST-0
+        anchors; gCST-1 arms are learned on $\G_{13k}$ with endpoints snapped
+        to nearest centroid neighbourhoods.
 \end{description}
 
-Formulation~B is recommended for an initial publication because it builds
-incrementally on the established VALENCIA infrastructure and makes the
-extension easy to communicate to the vaginal microbiome community.
+Mode B is preferred for initial deployment because it preserves backward
+compatibility while adding transition-state labels.
 
-\subsection{Coverage of African cohort arms}
+\subsection{Validation protocol}
 
-The VALENCIA training corpus is predominantly North American (IGS/HMP cohorts).
-The $\Li \to \BVAB$ arm, which is prominent in the Zambia and Bangladesh
-cohorts, may be underrepresented in $\G_{13k}$ because \textit{Ca.\
-Lachnocurva vaginae} is substantially more prevalent in sub-Saharan African
-women.  Two mitigations are recommended:
-
+Evaluation should be subject-grouped (not sample-random) and include:
 \begin{enumerate}[noitemsep]
-  \item Verify that the $\Li \to \BVAB$ arm exists in $\G_{13k}$ (possibly
-        as a short or sparse filament) before reporting its gCST-1 properties.
-  \item For transferable arm definitions, construct $\G_{13k+ZB}$ by merging
-        the VALENCIA corpus with the PreSSMat/ZAPPS data, define arm paths
-        on the merged graph, and restrict reference profiles to the 13k
-        vertices for classifier deployment.
+  \item stability of arm topology across $k$ and bootstrap resamples,
+  \item calibration of soft memberships,
+  \item reproducibility across cohorts (e.g.\ IGS/HMP vs African cohorts),
+  \item longitudinal transition consistency when repeated samples are available.
 \end{enumerate}
+
+\subsection{Coverage of underrepresented transition arms}
+
+Because the VALENCIA corpus is predominantly North American, some arms (notably
+$\Li\leftrightarrow\BVAB$) may be sparse.  For transferability, construct
+arm definitions on a merged graph $\G_{13k+\mathrm{ext}}$ (VALENCIA + external
+cohorts), then deploy using references restricted to the canonical 13k set.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Summary of Formal Definitions}
